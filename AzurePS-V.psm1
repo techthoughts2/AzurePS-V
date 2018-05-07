@@ -199,7 +199,7 @@ function Install-AzurePSModule {
     }#begin
     process {
         try {
-            Install-Module -Name Azure -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Install-Module -Name AzureRM -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
             Write-Verbose "Azure PowerShell Module installed."
         }#try
         catch {

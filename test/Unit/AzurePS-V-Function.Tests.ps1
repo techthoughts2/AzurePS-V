@@ -66,8 +66,8 @@ InModuleScope AzurePS-V {
             it 'should return $true when the Azure module is installed' {
                 mock 'Get-Module' -MockWith {
                     [PSCustomObject]@{
-                        Name       = 'Azure'
-                        Version    = '5.1.1'
+                        Name       = 'AzureRM'
+                        Version    = '6.0.0'
                         ModuleType = 'Script'
                     }
                 }#endMock
