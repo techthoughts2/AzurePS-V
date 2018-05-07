@@ -12,7 +12,7 @@
 RootModule = 'AzurePS-V.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.9.4'
+ModuleVersion = '0.9.7'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

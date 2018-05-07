@@ -1,6 +1,6 @@
 #region variables
 
-$Script:version = "0.9.4"
+$Script:version = "0.9.7"
 $Script:psGalleryResults = $false #boolean value to prevent multiple checks for PSGallery communication
 
 #endregion
@@ -143,11 +143,11 @@ function Test-AzureSubscriptionContext {
 .EXAMPLE
    Install-PowerShellGet
 
-   Installs the PowerShellGet module from PSGallery on the current device for the currentuser.
+   Installs the PowerShellGet module from PSGallery on the current device.
 .EXAMPLE
    Install-PowerShellGet -Verbose
 
-   Installs the PowerShellGet module from PSGallery on the current device for the currentuser with verbose output.
+   Installs the PowerShellGet module from PSGallery on the current device with verbose output.
 .OUTPUTS
    N/A
 .NOTES
@@ -161,7 +161,7 @@ function Install-PowerShellGet {
     }#begin
     process {
         try {
-            Install-Module -Name PowerShellGet -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Install-Module -Name PowerShellGet -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
             Write-Verbose "PowerShellGet Module installed."
         }#try
         catch {
@@ -181,11 +181,11 @@ function Install-PowerShellGet {
 .EXAMPLE
    Install-AzurePSModule
 
-   Installs the Azure PowerShell module from PSGallery on the current device for the currentuser.
+   Installs the Azure PowerShell module from PSGallery on the current device.
 .EXAMPLE
    Install-AzurePSModule -Verbose
 
-   Installs the Azure PowerShell module from PSGallery on the current device for the currentuser with verbose output.
+   Installs the Azure PowerShell module from PSGallery on the current device with verbose output.
 .OUTPUTS
    N/A
 .NOTES
@@ -199,7 +199,7 @@ function Install-AzurePSModule {
     }#begin
     process {
         try {
-            Install-Module -Name AzureRM -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Install-Module -Name AzureRM -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
             Write-Verbose "Azure PowerShell Module installed."
         }#try
         catch {
