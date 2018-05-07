@@ -409,18 +409,18 @@ function Test-AzurePowerShell {
     }#begin
     process {
         try {
-            $azureEval = Get-Module -Name Azure -ListAvailable -ErrorAction Stop
+            $azureEval = Get-Module -Name AzureRM -ListAvailable -ErrorAction Stop
             if ($azureEval) {
-                Write-Verbose "Azure module verified."
+                Write-Verbose "AzureRM module verified."
             }#if
             else {
-                Write-Verbose "Azure module not found on this device."
+                Write-Verbose "AzureRM module not found on this device."
                 $result = $false
             }#else
         }#try
         catch {
             $result = $false
-            Write-Verbose "An error was encountered looking up the Azure module:"
+            Write-Verbose "An error was encountered looking up the AzureRM module:"
             Write-Error $_
         }#catch
     }#process
