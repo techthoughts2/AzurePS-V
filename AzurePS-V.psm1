@@ -911,11 +911,7 @@ function Invoke-AzurePSVerification {
         #----------------------------------------------------------------------------------------
         Write-Verbose "Determining version of PowerShell..."
         if ($PSVersionTable.PSVersion.Major -lt 5) {
-            Write-Warning "For best results you should seriously consider upgrading to PowerShell 5"
-            Write-Warning "WMF 5.1 Link - https://www.microsoft.com/en-us/download/details.aspx?id=54616"
-            Write-Warning "It is possible to run Azure PowerShell on older version of PowerShell if you have PackageManagement PowerShell Modules:"
-            Write-Warning "https://www.microsoft.com/en-us/download/details.aspx?id=51451"
-            Write-Warning "This module does not support this configuration though - again, consider upgrading to 5.1"
+            Write-Warning "Azure PowerShell version 6.0.0 requires version 5.0 (or higher) of PowerShell. Previous versions of Azure PowerShell required at least version 3.0 of PowerShell to run any cmdlet."
             $result = $false
             return
         }
