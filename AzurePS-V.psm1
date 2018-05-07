@@ -1,6 +1,6 @@
 #region variables
 
-$Script:version = "0.9.4"
+$Script:version = "0.9.7"
 $Script:psGalleryResults = $false #boolean value to prevent multiple checks for PSGallery communication
 
 #endregion
@@ -143,11 +143,11 @@ function Test-AzureSubscriptionContext {
 .EXAMPLE
    Install-PowerShellGet
 
-   Installs the PowerShellGet module from PSGallery on the current device for the currentuser.
+   Installs the PowerShellGet module from PSGallery on the current device.
 .EXAMPLE
    Install-PowerShellGet -Verbose
 
-   Installs the PowerShellGet module from PSGallery on the current device for the currentuser with verbose output.
+   Installs the PowerShellGet module from PSGallery on the current device with verbose output.
 .OUTPUTS
    N/A
 .NOTES
@@ -161,7 +161,7 @@ function Install-PowerShellGet {
     }#begin
     process {
         try {
-            Install-Module -Name PowerShellGet -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Install-Module -Name PowerShellGet -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
             Write-Verbose "PowerShellGet Module installed."
         }#try
         catch {
@@ -181,11 +181,11 @@ function Install-PowerShellGet {
 .EXAMPLE
    Install-AzurePSModule
 
-   Installs the Azure PowerShell module from PSGallery on the current device for the currentuser.
+   Installs the Azure PowerShell module from PSGallery on the current device.
 .EXAMPLE
    Install-AzurePSModule -Verbose
 
-   Installs the Azure PowerShell module from PSGallery on the current device for the currentuser with verbose output.
+   Installs the Azure PowerShell module from PSGallery on the current device with verbose output.
 .OUTPUTS
    N/A
 .NOTES
@@ -199,7 +199,7 @@ function Install-AzurePSModule {
     }#begin
     process {
         try {
-            Install-Module -Name Azure -Repository PSGallery -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Install-Module -Name AzureRM -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
             Write-Verbose "Azure PowerShell Module installed."
         }#try
         catch {
@@ -409,18 +409,18 @@ function Test-AzurePowerShell {
     }#begin
     process {
         try {
-            $azureEval = Get-Module -Name Azure -ListAvailable -ErrorAction Stop
+            $azureEval = Get-Module -Name AzureRM -ListAvailable -ErrorAction Stop
             if ($azureEval) {
-                Write-Verbose "Azure module verified."
+                Write-Verbose "AzureRM module verified."
             }#if
             else {
-                Write-Verbose "Azure module not found on this device."
+                Write-Verbose "AzureRM module not found on this device."
                 $result = $false
             }#else
         }#try
         catch {
             $result = $false
-            Write-Verbose "An error was encountered looking up the Azure module:"
+            Write-Verbose "An error was encountered looking up the AzureRM module:"
             Write-Error $_
         }#catch
     }#process
@@ -911,11 +911,7 @@ function Invoke-AzurePSVerification {
         #----------------------------------------------------------------------------------------
         Write-Verbose "Determining version of PowerShell..."
         if ($PSVersionTable.PSVersion.Major -lt 5) {
-            Write-Warning "For best results you should seriously consider upgrading to PowerShell 5"
-            Write-Warning "WMF 5.1 Link - https://www.microsoft.com/en-us/download/details.aspx?id=54616"
-            Write-Warning "It is possible to run Azure PowerShell on older version of PowerShell if you have PackageManagement PowerShell Modules:"
-            Write-Warning "https://www.microsoft.com/en-us/download/details.aspx?id=51451"
-            Write-Warning "This module does not support this configuration though - again, consider upgrading to 5.1"
+            Write-Warning "Azure PowerShell version 6.0.0 requires version 5.0 (or higher) of PowerShell. Previous versions of Azure PowerShell required at least version 3.0 of PowerShell to run any cmdlet."
             $result = $false
             return
         }
@@ -946,6 +942,7 @@ function Invoke-AzurePSVerification {
                     else {
                         Write-Verbose "NuGet provider not found on this system. Installing with no interaction..."
                         Install-NuGetProvider
+                        $nuGetRecent = $true
                         $nuGetResults = Test-NuGetProvider
                     }#else_installNoInteraction
                 }#if_OneGetConnection
