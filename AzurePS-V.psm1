@@ -1,6 +1,6 @@
 #region variables
 
-$Script:version = "0.9.0"
+$Script:version = "0.9.4"
 $Script:psGalleryResults = $false #boolean value to prevent multiple checks for PSGallery communication
 
 #endregion
@@ -253,6 +253,45 @@ function Install-NuGetProvider {
 #endregion
 #region prerequisiteChecks
 
+<#
+.Synopsis
+   Tests if PowerShell Session is running as Admin
+.DESCRIPTION
+   Evaluates if current PowerShell session is running under the context of an Administrator
+.EXAMPLE
+    Test-RunningAsAdmin
+
+    This will verify if the current PowerShell session is running under the context of an Administrator
+.EXAMPLE
+    Test-RunningAsAdmin -Verbose
+
+    This will verify if the current PowerShell session is running under the context of an Administrator with verbose output
+.OUTPUTS
+   System.Boolean
+.NOTES
+   Author: Jake Morrison - @jakemorrison - http://techthoughts.info
+#>
+function Test-RunningAsAdmin {
+    [CmdletBinding()]
+    Param()
+    $result = $false #assume the worst
+    try {
+        Write-Verbose -Message "Testing if current PS session is running as admin..."
+        $eval = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        if ($eval -eq $true) {
+            Write-Verbose -Message "PS Session is running as Administrator."
+            $result = $true
+        }
+        else {
+            Write-Verbose -Message "PS Session is NOT running as Administrator"
+        }
+    }#try
+    catch {
+        Write-Warning -Message "Error encountering evaluating runas status of PS session"
+        Write-Error $_
+    }#catch
+    return $result
+}
 <#
 .Synopsis
    Evaluates if the PowerShellGet module is currently installed on the system.
@@ -864,8 +903,11 @@ function Invoke-AzurePSVerification {
         $psGetRecent = $false #used to determine if new version check should be skipped
         $azureRecent = $false #used to determine if new version check should be skipped
         $Script:psGalleryResults = $false #reset this script value
+        $adminEval = $false #user to determine if module is running under the context of an administrator
     }#begin
     process {
+        #----------------------------------------------------------------------------------------
+        $adminEval = Test-RunningAsAdmin
         #----------------------------------------------------------------------------------------
         Write-Verbose "Determining version of PowerShell..."
         if ($PSVersionTable.PSVersion.Major -lt 5) {
@@ -877,40 +919,45 @@ function Invoke-AzurePSVerification {
             $result = $false
             return
         }
-        else{
+        else {
             Write-Verbose "PowerShell version verified."
         }
         #----------------------------------------------------------------------------------------
         $nuGetResults = Test-NuGetProvider
         if ($nuGetResults -eq $false) {
-            if ((Test-OneGetConnection) -eq $true) {
-                if (!$InstallNoInteraction) {
-                    Write-Verbose "Prompting user..."
-                    while ("Y", "N" -notcontains $userChoice) {
-                        $userChoice = Read-Host "NuGet provider not found on this system. Would you like to install? (Y/N)"
-                        $userchoice = $userChoice.ToUpper()
-                    }
-                    if ($userChoice -eq "Y") {
-                        Write-Verbose "User has elected to install NuGet provider."
-                        Install-NuGetProvider
-                        $nuGetRecent = $true
-                        $nuGetResults = Test-NuGetProvider
-                    }
+            if ($adminEval -eq $true) {
+                if ((Test-OneGetConnection) -eq $true) {
+                    if (!$InstallNoInteraction) {
+                        Write-Verbose "Prompting user..."
+                        while ("Y", "N" -notcontains $userChoice) {
+                            $userChoice = Read-Host "NuGet provider not found on this system. Would you like to install? (Y/N)"
+                            $userchoice = $userChoice.ToUpper()
+                        }
+                        if ($userChoice -eq "Y") {
+                            Write-Verbose "User has elected to install NuGet provider."
+                            Install-NuGetProvider
+                            $nuGetRecent = $true
+                            $nuGetResults = Test-NuGetProvider
+                        }
+                        else {
+                            Write-Verbose "User has elected not to install NuGet provider."
+                        }
+                    }#if_installNoInteraction
                     else {
-                        Write-Verbose "User has elected not to install NuGet provider."
-                    }
-                }
+                        Write-Verbose "NuGet provider not found on this system. Installing with no interaction..."
+                        Install-NuGetProvider
+                        $nuGetResults = Test-NuGetProvider
+                    }#else_installNoInteraction
+                }#if_OneGetConnection
                 else {
-                    Write-Verbose "NuGet provider not found on this system. Installing with no interaction..."
-                    Install-NuGetProvider
-                    $nuGetResults = Test-NuGetProvider
-                }
-            }
+                    Write-Warning "OneGet communication check failed. NuGet installation and upgrade will not be possible as a result."
+                    Write-Warning "Unable to attempt NuGet provider install."
+                }#else_OneGetConnection
+            }#if_adminCheck
             else {
-                Write-Warning "OneGet communication check failed. NuGet installation and upgrade will not be possible as a result."
-                Write-Warning "Unable to attempt NuGet provider install."
-            }
-        }
+                Write-Warning "Not currently running as Administrator. Unable to attempt NuGet install."
+            }#else_adminCheck
+        }#if_NuGetInstallCheck
         if ($nuGetResults -ne $true) {
             Write-Verbose "NuGet not present and is a required provider. Exiting."
             $result = $false
@@ -927,40 +974,45 @@ function Invoke-AzurePSVerification {
                 $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                 if ($vResults -eq $true) {
                     Write-Verbose "A higher version of NuGet is available..."
-                    if (!$InstallNoInteraction) {
-                        Write-Verbose "Prompting user..."
-                        while ("Y", "N" -notcontains $userChoice) {
-                            $userChoice = Read-Host "A higher version of NuGet is available. Would you like to install the latest version? (Y/N)"
-                            $userchoice = $userChoice.ToUpper()
+                    if ($adminEval -eq $true) {
+                        if (!$InstallNoInteraction) {
+                            Write-Verbose "Prompting user..."
+                            while ("Y", "N" -notcontains $userChoice) {
+                                $userChoice = Read-Host "A higher version of NuGet is available. Would you like to install the latest version? (Y/N)"
+                                $userchoice = $userChoice.ToUpper()
+                            }
+                            if ($userChoice -eq "Y") {
+                                Write-Verbose "User has elected to install latest version of NuGet."
+                                Install-NuGetProvider
+                                $b = Get-InstalledProviderVersion -providerName NuGet
+                                $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
+                            }
+                            else {
+                                Write-Verbose "User has elected not to install latest version of NuGet."
+                            }
                         }
-                        if ($userChoice -eq "Y") {
-                            Write-Verbose "User has elected to install latest version of NuGet."
+                        else {
+                            Write-Verbose "Installing latest version of NuGet with no interaction..."
                             Install-NuGetProvider
                             $b = Get-InstalledProviderVersion -providerName NuGet
                             $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                         }
-                        else {
-                            Write-Verbose "User has elected not to install latest version of NuGet."
-                        }
-                    }
+                    }#if_adminCheck
                     else {
-                        Write-Verbose "Installing latest version of NuGet with no interaction..."
-                        Install-NuGetProvider
-                        $b = Get-InstalledProviderVersion -providerName NuGet
-                        $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
-                    }
-                }
+                        Write-Warning "Not currently running as Administrator. Unable to attempt NuGet upgrade."
+                    }#else_adminCheck
+                }#if_versioncheck
                 if ($vResults -eq $true) {
                     Write-Warning "It is recommended that you be running the latest available version of NuGet"
                 }
-            }
+            }#if_OneGetConnection
             else {
                 Write-Warning "NuGet package verified but unable to determine if NuGet is latest version."
-            }
-        }
+            }#else_if_OneGetConnection
+        }#if_latest_recent
         else {
             Write-Verbose "NuGet latest version check skipped."
-        }
+        }#else_latest_recent
         $userChoice = $null
         #----------------------------------------------------------------------------------------
         Write-Verbose "Determining if PSGallery is a trusted repository..."
@@ -985,33 +1037,38 @@ function Invoke-AzurePSVerification {
         Write-Verbose "Verifying if PowerShellGet module is installed..."
         $psGetResults = Test-PowerShellGet
         if ($psGetResults -eq $false) {
-            if ((Test-PSGalleryConnection) -eq $true) {
-                if (!$InstallNoInteraction) {
-                    Write-Verbose "Prompting user..."
-                    while ("Y", "N" -notcontains $userChoice) {
-                        $userChoice = Read-Host "PowerShellGet not found on this system. Would you like to install? (Y/N)"
-                        $userchoice = $userChoice.ToUpper()
-                    }
-                    if ($userChoice -eq "Y") {
-                        Write-Verbose "User has elected to install PowerShellGet."
+            if ($adminEval -eq $true) {
+                if ((Test-PSGalleryConnection) -eq $true) {
+                    if (!$InstallNoInteraction) {
+                        Write-Verbose "Prompting user..."
+                        while ("Y", "N" -notcontains $userChoice) {
+                            $userChoice = Read-Host "PowerShellGet not found on this system. Would you like to install? (Y/N)"
+                            $userchoice = $userChoice.ToUpper()
+                        }
+                        if ($userChoice -eq "Y") {
+                            Write-Verbose "User has elected to install PowerShellGet."
+                            Install-PowerShellGet
+                            $psGetRecent = $true
+                            $psGetResults = Test-PowerShellGet
+                        }
+                        else {
+                            Write-Verbose "User has elected not to install PowerShellGet."
+                        }
+                    }#if_installNoInteraction
+                    else {
+                        Write-Verbose "PowerShellGet not found on this system. Installing with no interaction..."
                         Install-PowerShellGet
                         $psGetRecent = $true
                         $psGetResults = Test-PowerShellGet
-                    }
-                    else {
-                        Write-Verbose "User has elected not to install PowerShellGet."
-                    }
-                }
+                    }#else_installNoInteraction
+                }#if_psgalleryConnection
                 else {
-                    Write-Verbose "PowerShellGet not found on this system. Installing with no interaction..."
-                    Install-PowerShellGet
-                    $psGetRecent = $true
-                    $psGetResults = Test-PowerShellGet
-                }
-            }
+                    Write-Warning "Unable to attempt PowerShellGet module install."
+                }#else_psgalleryConnection
+            }#if_adminCheck
             else {
-                Write-Warning "Unable to attempt PowerShellGet module install."
-            }
+                Write-Warning "Not currently running as Administrator. Unable to attempt PowerShellGet install."
+            }#else_adminCheck
         }
         if ($psGetResults -ne $true) {
             Write-Verbose "PowerShellGet not present and is a required module. Exiting."
@@ -1028,72 +1085,82 @@ function Invoke-AzurePSVerification {
                 $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                 if ($vResults -eq $true) {
                     Write-Verbose "A higher version of PowerShellGet is available..."
-                    if (!$InstallNoInteraction) {
-                        Write-Verbose "Prompting user..."
-                        while ("Y", "N" -notcontains $userChoice) {
-                            $userChoice = Read-Host "A higher version of PowerShellGet is available. Would you like to install the latest version? (Y/N)"
-                            $userchoice = $userChoice.ToUpper()
+                    if ($adminEval -eq $true) {
+                        if (!$InstallNoInteraction) {
+                            Write-Verbose "Prompting user..."
+                            while ("Y", "N" -notcontains $userChoice) {
+                                $userChoice = Read-Host "A higher version of PowerShellGet is available. Would you like to install the latest version? (Y/N)"
+                                $userchoice = $userChoice.ToUpper()
+                            }
+                            if ($userChoice -eq "Y") {
+                                Write-Verbose "User has elected to install latest version of PowerShellGet."
+                                Install-PowerShellGet
+                                $b = Get-InstalledModuleVersion -moduleName PowerShellGet
+                                $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
+                            }
+                            else {
+                                Write-Verbose "User has elected not to install latest version of PowerShellGet."
+                            }
                         }
-                        if ($userChoice -eq "Y") {
-                            Write-Verbose "User has elected to install latest version of PowerShellGet."
+                        else {
+                            Write-Verbose "Installing latest version of PowerShellGet with no interaction..."
                             Install-PowerShellGet
                             $b = Get-InstalledModuleVersion -moduleName PowerShellGet
                             $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                         }
-                        else {
-                            Write-Verbose "User has elected not to install latest version of PowerShellGet."
-                        }
-                    }
+                    }#if_adminCheck
                     else {
-                        Write-Verbose "Installing latest version of PowerShellGet with no interaction..."
-                        Install-PowerShellGet
-                        $b = Get-InstalledModuleVersion -moduleName PowerShellGet
-                        $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
-                    }
-                }
+                        Write-Warning "Not currently running as Administrator. Unable to attempt PowerShellGet upgrade."
+                    }#else_adminCheck
+                }#if_versioncheck
                 if ($vResults -eq $true) {
                     Write-Warning "It is recommended that you be running the latest available version of PowerShellGet"
                 }
-            }
+            }#if_psgalleryConnection
             else {
                 Write-Warning "PowerShellGet Module verified but unable to determine if PowerShellGet module is latest version."
-            }
-        }
-        else{
+            }#else_psgalleryConnection
+        }#if_latest_recent
+        else {
             Write-Verbose "PowerShellGet latest version check skipped."
-        }
+        }#else_latest_recent
         $userChoice = $null
         #----------------------------------------------------------------------------------------
         Write-Verbose "Verifying if Azure PowerShell module is installed..."
         $azurePSResults = Test-AzurePowerShell
         if ($azurePSResults -eq $false) {
-            if ((Test-PSGalleryConnection) -eq $true) {
-                if (!$InstallNoInteraction) {
-                    Write-Verbose "Prompting user..."
-                    while ("Y", "N" -notcontains $userChoice) {
-                        $userChoice = Read-Host "Azure PowerShell module not found on this system. Would you like to install? (Y/N)"
-                        $userchoice = $userChoice.ToUpper()
+            if ($adminEval -eq $true) {
+                if ((Test-PSGalleryConnection) -eq $true) {
+                    if (!$InstallNoInteraction) {
+                        Write-Verbose "Prompting user..."
+                        while ("Y", "N" -notcontains $userChoice) {
+                            $userChoice = Read-Host "Azure PowerShell module not found on this system. Would you like to install? (Y/N)"
+                            $userchoice = $userChoice.ToUpper()
+                        }
+                        if ($userChoice -eq "Y") {
+                            Write-Verbose "User has elected to install Azure PowerShell module."
+                            Install-AzurePSModule
+                            $azureRecent = $true
+                            $azurePSResults = Test-AzurePowerShell
+                        }
+                        else {
+                            Write-Verbose "User has elected not to install Azure PowerShell module."
+                        }
                     }
-                    if ($userChoice -eq "Y") {
-                        Write-Verbose "User has elected to install Azure PowerShell module."
+                    else {
+                        Write-Verbose "Azure PowerShell module not found on this system. Installing with no interaction..."
                         Install-AzurePSModule
                         $azureRecent = $true
                         $azurePSResults = Test-AzurePowerShell
                     }
-                    else {
-                        Write-Verbose "User has elected not to install Azure PowerShell module."
-                    }
-                }
+                }#if_psgalleryConnection
                 else {
-                    Write-Verbose "Azure PowerShell module not found on this system. Installing with no interaction..."
-                    Install-AzurePSModule
-                    $azureRecent = $true
-                    $azurePSResults = Test-AzurePowerShell
-                }
-            }
+                    Write-Warning "Unable to attempt Azure PowerShell module install."
+                }#else_psgalleryConnection
+            }#if_adminCheck
             else {
-                Write-Warning "Unable to attempt Azure PowerShell module install."
-            }
+                Write-Warning "Not currently running as Administrator. Unable to attempt Azure PowerShell install."
+            }#else_adminCheck
         }
         if ($azurePSResults -ne $true) {
             Write-Verbose "Azure PowerShell module not present and is a required module. Exiting."
@@ -1110,40 +1177,45 @@ function Invoke-AzurePSVerification {
                 $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                 if ($vResults -eq $true) {
                     Write-Verbose "A higher version of Azure PowerShell is available..."
-                    if (!$InstallNoInteraction) {
-                        Write-Verbose "Prompting user..."
-                        while ("Y", "N" -notcontains $userChoice) {
-                            $userChoice = Read-Host "A higher version of Azure PowerShell is available. Would you like to install the latest version? (Y/N)"
-                            $userchoice = $userChoice.ToUpper()
+                    if ($adminEval -eq $true) {
+                        if (!$InstallNoInteraction) {
+                            Write-Verbose "Prompting user..."
+                            while ("Y", "N" -notcontains $userChoice) {
+                                $userChoice = Read-Host "A higher version of Azure PowerShell is available. Would you like to install the latest version? (Y/N)"
+                                $userchoice = $userChoice.ToUpper()
+                            }
+                            if ($userChoice -eq "Y") {
+                                Write-Verbose "User has elected to install latest version of Azure PowerShell."
+                                Install-AzurePSModule
+                                $b = Get-InstalledModuleVersion -moduleName Azure
+                                $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
+                            }
+                            else {
+                                Write-Verbose "User has elected not to install latest version of Azure PowerShell."
+                            }
                         }
-                        if ($userChoice -eq "Y") {
-                            Write-Verbose "User has elected to install latest version of Azure PowerShell."
+                        else {
+                            Write-Verbose "Installing latest version of Azure PowerShell with no interaction..."
                             Install-AzurePSModule
                             $b = Get-InstalledModuleVersion -moduleName Azure
                             $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                         }
-                        else {
-                            Write-Verbose "User has elected not to install latest version of Azure PowerShell."
-                        }
-                    }
+                    }#if_adminCheck
                     else {
-                        Write-Verbose "Installing latest version of Azure PowerShell with no interaction..."
-                        Install-AzurePSModule
-                        $b = Get-InstalledModuleVersion -moduleName Azure
-                        $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
-                    }
-                }
+                        Write-Warning "Not currently running as Administrator. Unable to attempt Azure PowerShell upgrade."
+                    }#else_adminCheck
+                }#if_versioncheck
                 if ($vResults -eq $true) {
                     Write-Warning "It is recommended that you be running the latest available version of Azure PowerShell"
                 }
-            }
+            }#if_psgalleryConnection
             else {
                 Write-Warning "Azure PowerShell Module verified but unable to determine if Azure PowerShell module is latest version."
-            }
-        }
-        else{
+            }#else_psgalleryConnection
+        }#if_latest_recent
+        else {
             Write-Verbose "Azure PowerShell latest version check skipped."
-        }
+        }#else_latest_recent
         $userChoice = $null
         #----------------------------------------------------------------------------------------
         if ($SubscriptionID) {

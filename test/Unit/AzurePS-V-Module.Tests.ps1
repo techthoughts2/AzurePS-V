@@ -16,6 +16,7 @@ $aFunctions = @(
     'Install-PowerShellGet',
     'Install-AzurePSModule',
     'Install-NuGetProvider',
+    'Test-RunningAsAdmin',
     'Test-PSGalleryTrusted',
     'Test-PowerShellGet',
     'Test-NuGetProvider',
@@ -37,6 +38,7 @@ $hFunctions = @(
     'Install-PowerShellGet',
     'Install-AzurePSModule',
     'Install-NuGetProvider',
+    'Test-RunningAsAdmin',
     'Test-PSGalleryTrusted',
     'Test-PowerShellGet',
     'Test-NuGetProvider'
