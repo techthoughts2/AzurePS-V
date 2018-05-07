@@ -946,6 +946,7 @@ function Invoke-AzurePSVerification {
                     else {
                         Write-Verbose "NuGet provider not found on this system. Installing with no interaction..."
                         Install-NuGetProvider
+                        $nuGetRecent = $true
                         $nuGetResults = Test-NuGetProvider
                     }#else_installNoInteraction
                 }#if_OneGetConnection
