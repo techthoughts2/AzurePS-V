@@ -12,7 +12,7 @@
 RootModule = 'AzurePS-V.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.9.7'
+ModuleVersion = '0.9.9'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -30,7 +30,7 @@ CompanyName = 'TechThoughts'
 Copyright = '(c) 2018 Jacob Morrison. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'TBD'
+Description = 'Evaluates the local system to determine that all prerequisites are met to successfully run Azure RM PowerShell commands. Any prerequisites found missing will be installed automatically if the [-InstallNoInteraction] parameter is specified, otherwise confirmation prompts are presented to the user for each missing component. If the [-Latest] parameter is provided each component will be evaluated to determine if there is a higher version number available from its respective public repository. If used in conjunction with the [-InstallNoInteraction] parameter the latest version will automatically be installed, otherwise confirmation prompts are presented to the user for each upgrade. Once all requirements are met, Azure RM commands can be scoped to a specific Azure subscription with use of the [[-SubscriptionID] ] parameter. The specified Azure Subscription ID will be verified, and the user will be prompted for credentials to authenticate to that subscription if not currently active. Once authenticated, the provided ID will be set to the primary context for Azure RM commands.'
 
 # Minimum version of the Windows PowerShell engine required by this module
 PowerShellVersion = '5.1'

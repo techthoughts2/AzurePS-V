@@ -1,6 +1,6 @@
 #region variables
 
-$Script:version = "0.9.7"
+$Script:version = "0.9.9"
 $Script:psGalleryResults = $false #boolean value to prevent multiple checks for PSGallery communication
 
 #endregion
@@ -1169,8 +1169,8 @@ function Invoke-AzurePSVerification {
         if ($Latest -and $azureRecent -eq $false) {
             if ((Test-PSGalleryConnection) -eq $true) {
                 Write-Verbose "Verifying if Azure PowerShell is latest version available..."
-                $a = Get-PSGalleryModuleVersion -moduleName Azure
-                $b = Get-InstalledModuleVersion -moduleName Azure
+                $a = Get-PSGalleryModuleVersion -moduleName AzureRM
+                $b = Get-InstalledModuleVersion -moduleName AzureRM
                 $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                 if ($vResults -eq $true) {
                     Write-Verbose "A higher version of Azure PowerShell is available..."
@@ -1184,7 +1184,7 @@ function Invoke-AzurePSVerification {
                             if ($userChoice -eq "Y") {
                                 Write-Verbose "User has elected to install latest version of Azure PowerShell."
                                 Install-AzurePSModule
-                                $b = Get-InstalledModuleVersion -moduleName Azure
+                                $b = Get-InstalledModuleVersion -moduleName AzureRM
                                 $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                             }
                             else {
@@ -1194,7 +1194,7 @@ function Invoke-AzurePSVerification {
                         else {
                             Write-Verbose "Installing latest version of Azure PowerShell with no interaction..."
                             Install-AzurePSModule
-                            $b = Get-InstalledModuleVersion -moduleName Azure
+                            $b = Get-InstalledModuleVersion -moduleName AzureRM
                             $vResults = Compare-PublicVersionToInstalledVersion -publicVersion $a -installedVersion $b
                         }
                     }#if_adminCheck
