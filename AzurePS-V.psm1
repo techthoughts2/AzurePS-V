@@ -1,6 +1,6 @@
 #region variables
 
-$Script:version = "0.9.7"
+$Script:version = "0.9.8"
 $Script:psGalleryResults = $false #boolean value to prevent multiple checks for PSGallery communication
 
 #endregion
